@@ -34,7 +34,9 @@ CASE WHEN net_value > 0 THEN 'NET WITHDRAWERS'
 ELSE 'NET DEPOSITORS'
 END,
 COUNT(agent_id) AS net_count FROM (SELECT agent_id, sum(amount) AS net_value FROM agent_transactions
-WHERE ((amount < 0) OR (amount > 0)) AND (agent_transactions.when_created > (NOW() - INTERVAL '1 week'))
+WHERE ((amount < 0) OR (amount > 0)) AND (agent_transactions.when_created BETWEEN
+NOW()::DATE-EXTRACT(DOW FROM NOW())::INTEGER-7
+AND NOW()::DATE-EXTRACT(DOW from NOW())::INTEGER)
 GROUP BY agent_id
 ORDER BY agent_id ASC) AS abc
 GROUP BY (net_value > 0);
@@ -47,7 +49,9 @@ CREATE VIEW atx_volume_city_summary AS
 SELECT agents.city AS city, COUNT(agent_transactions.atx_id) AS trans_volume FROM agents
 INNER JOIN agent_transactions
 ON agents.agent_id = agent_transactions.agent_id
-WHERE (agent_transactions.when_created > (NOW() - INTERVAL '1 week'))
+WHERE (agent_transactions.when_created BETWEEN
+NOW()::DATE-EXTRACT(DOW FROM NOW())::INTEGER-7
+AND NOW()::DATE-EXTRACT(DOW from NOW())::INTEGER)
 GROUP BY agents.city
 
 --QUESTION SEVEN
@@ -59,7 +63,9 @@ CREATE VIEW atx_volume_city_summary_by_country AS
 SELECT agents.country AS country, agents.city AS city, COUNT(agent_transactions.atx_id) AS Volume FROM agents
 INNER JOIN agent_transactions
 ON agents.agent_id = agent_transactions.agent_id
-WHERE (agent_transactions.when_created > (NOW() - INTERVAL '1 week'))
+WHERE (agent_transactions.when_created BETWEEN
+NOW()::DATE-EXTRACT(DOW FROM NOW())::INTEGER-7
+AND NOW()::DATE-EXTRACT(DOW from NOW())::INTEGER)
 GROUP BY agents.country, agents.city
 
 --QUESTION EIGHT
@@ -73,7 +79,9 @@ SUM(transfers.send_amount_scalar) AS volume
 FROM transfers
 INNER JOIN wallets
 ON transfers.source_wallet_id = wallets.wallet_id
-WHERE (transfers.when_created > (NOW() - INTERVAL '1 week'))
+WHERE (transfers.when_created BETWEEN
+NOW()::DATE-EXTRACT(DOW FROM NOW())::INTEGER-7
+AND NOW()::DATE-EXTRACT(DOW from NOW())::INTEGER)
 GROUP BY wallets.ledger_location, transfers.kind;
 
 --QUESTION NINE
@@ -88,7 +96,9 @@ COUNT(DISTINCT transfers.source_wallet_id) AS unique_senders
 FROM transfers
 INNER JOIN wallets
 ON transfers.source_wallet_id = wallets.wallet_id
-WHERE (transfers.when_created > (NOW() - INTERVAL '1 week'))
+WHERE transfers.when_created BETWEEN
+NOW()::DATE-EXTRACT(DOW FROM NOW())::INTEGER-7
+AND NOW()::DATE-EXTRACT(DOW from NOW())::INTEGER
 GROUP BY wallets.ledger_location, transfers.kind;
 
 --QUESTION TEN
@@ -96,4 +106,6 @@ GROUP BY wallets.ledger_location, transfers.kind;
 --Then we show the wallet id (source_wallet_id) and the amount they sent (send_amount_scalar)
 SELECT source_wallet_id, send_amount_scalar
 FROM transfers
-WHERE (send_amount_currency ='CFA') AND (send_amount_scalar > 10000000) AND (transfers.when_created > (NOW() - INTERVAL '1 month'))
+WHERE (send_amount_currency ='CFA')
+AND (send_amount_scalar > 10000000)
+AND (EXTRACT(MONTH FROM when_created) = EXTRACT(MONTH FROM NOW()) - 1)
